@@ -168,7 +168,7 @@ class FastInst(nn.Module):
     def device(self):
         return self.pixel_mean.device
 
-    def forward(self, batched_inputs):
+    def forward(self, batched_inputs, targets):
         """
         Args:
             batched_inputs: a list, batched outputs of :class:`DatasetMapper`.
@@ -194,7 +194,7 @@ class FastInst(nn.Module):
                     segments_info (list[dict]): Describe each segment in `panoptic_seg`.
                         Each dict contains keys "id", "category_id", "isthing".
         """
-        images = [x["image"].to(self.device) for x in batched_inputs]
+        images = [x.to(self.device) for x in batched_inputs["images"]]
 
         images = [(x - self.pixel_mean) / self.pixel_std for x in images]
         images = ImageList.from_tensors(images, self.size_divisibility)
@@ -202,13 +202,6 @@ class FastInst(nn.Module):
         features = self.backbone(images.tensor)
 
         if self.training:
-            # mask classification target
-            if "instances" in batched_inputs[0]:
-                gt_instances = [x["instances"].to(self.device) for x in batched_inputs]
-                targets = self.prepare_targets(gt_instances, images)
-            else:
-                targets = None
-
             outputs = self.sem_seg_head(features, targets)
 
             # bipartite matching-based loss
@@ -220,9 +213,10 @@ class FastInst(nn.Module):
                 else:
                     # remove this loss if not specified in `weight_dict`
                     losses.pop(k)
-            return losses
+            return outputs, losses
         else:
             outputs = self.sem_seg_head(features)
+            return outputs, None
 
             mask_cls_results = outputs["pred_logits"]
             mask_pred_results = outputs["pred_masks"]
@@ -241,8 +235,8 @@ class FastInst(nn.Module):
             for mask_cls_result, mask_pred_result, input_per_image, image_size in zip(
                     mask_cls_results, mask_pred_results, batched_inputs, images.image_sizes,
             ):
-                height = input_per_image.get("height", image_size[0])
-                width = input_per_image.get("width", image_size[1])
+                height = image_size[0]
+                width = image_size[1]
                 processed_results.append({})
 
                 if self.sem_seg_postprocess_before_inference:

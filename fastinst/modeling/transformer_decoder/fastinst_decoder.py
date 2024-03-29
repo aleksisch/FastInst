@@ -5,7 +5,7 @@ from detectron2.config import configurable
 from torch import nn
 from torch.nn import functional as F
 
-from fastinst.utils.misc import nested_tensor_from_tensor_list
+from ...utils.misc import nested_tensor_from_tensor_list
 from .utils import TRANSFORMER_DECODER_REGISTRY, QueryProposal, \
     CrossAttentionLayer, SelfAttentionLayer, FFNLayer, MLP
 
@@ -193,6 +193,7 @@ class FastInstDecoder(nn.Module):
         predictions_matching_index = guided_predictions_matching_index + predictions_matching_index
 
         out = {
+            'query_features': query_features,
             'proposal_cls_logits': proposal_cls_logits,
             'query_locations': query_locations,
             'pred_logits': predictions_class[-1],
