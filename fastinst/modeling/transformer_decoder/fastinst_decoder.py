@@ -170,6 +170,7 @@ class FastInstDecoder(nn.Module):
             query_feature_memory.append(query_features)
             pixel_feature_memory.append(pixel_features)
 
+        guided_query_features = []
         guided_predictions_class = []
         guided_predictions_mask = []
         guided_predictions_matching_index = []
@@ -184,6 +185,7 @@ class FastInstDecoder(nn.Module):
                     query_features, pixel_features, pixel_feature_size, idx_layer=i
                 )
 
+                guided_query_features.append(query_features)
                 guided_predictions_class.append(outputs_class)
                 guided_predictions_mask.append(outputs_mask)
                 guided_predictions_matching_index.append(matching_indices)
@@ -191,6 +193,7 @@ class FastInstDecoder(nn.Module):
         predictions_class = guided_predictions_class + predictions_class
         predictions_mask = guided_predictions_mask + predictions_mask
         predictions_matching_index = guided_predictions_matching_index + predictions_matching_index
+        predictions_query_features = guided_query_features + query_feature_memory
 
         out = {
             'query_features': query_features,
@@ -200,7 +203,7 @@ class FastInstDecoder(nn.Module):
             'pred_masks': predictions_mask[-1],
             'pred_matching_indices': predictions_matching_index[-1],
             'aux_outputs': self._set_aux_loss(
-                predictions_class, predictions_mask, predictions_matching_index, query_locations
+                predictions_class, predictions_mask, predictions_matching_index, query_locations, predictions_query_features
             )
         }
         return out
@@ -281,12 +284,14 @@ class FastInstDecoder(nn.Module):
         return outputs_class, outputs_mask, attn_mask, matching_indices, gt_attn_mask
 
     @torch.jit.unused
-    def _set_aux_loss(self, outputs_class, outputs_seg_masks, output_indices, output_query_locations):
+    def _set_aux_loss(self, outputs_class, outputs_seg_masks, output_indices, output_query_locations, outputs_query_features):
         return [
             {
                 "query_locations": output_query_locations,
                 "pred_logits": a,
                 "pred_masks": b,
-                "pred_matching_indices": c}
-            for a, b, c in zip(outputs_class[:-1], outputs_seg_masks[:-1], output_indices[:-1])
+                "pred_matching_indices": c,
+                "query_features": d,
+            }
+            for a, b, c, d in zip(outputs_class[:-1], outputs_seg_masks[:-1], output_indices[:-1], outputs_query_features[:-1])
         ]

@@ -251,6 +251,7 @@ class SetCriterion(nn.Module):
         else:
             indices = self.matcher(outputs_without_aux, targets)
 
+        outputs["pred_matching_indices"] = indices
         # Compute the average number of target boxes across all nodes, for normalization purposes
         num_masks = sum(len(t["labels"]) for t in targets)
         num_masks = torch.as_tensor(
@@ -272,6 +273,7 @@ class SetCriterion(nn.Module):
                     indices = aux_outputs["pred_matching_indices"]
                 else:
                     indices = self.matcher(aux_outputs, targets)
+                aux_outputs["pred_matching_indices"] = indices
                 for loss in self.losses:
                     l_dict = self.get_loss(loss, aux_outputs, targets, indices, num_masks)
                     l_dict = {k + f"_{i}": v for k, v in l_dict.items()}
