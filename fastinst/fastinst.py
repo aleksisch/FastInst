@@ -168,7 +168,7 @@ class FastInst(nn.Module):
     def device(self):
         return self.pixel_mean.device
 
-    def forward(self, batched_inputs, targets):
+    def forward(self, batched_inputs, targets, return_loss=True):
         """
         Args:
             batched_inputs: a list, batched outputs of :class:`DatasetMapper`.
@@ -203,7 +203,8 @@ class FastInst(nn.Module):
 
         if self.training:
             outputs = self.sem_seg_head(features, targets)
-
+            if not return_loss:
+                return outputs, 0.
             # bipartite matching-based loss
             losses = self.criterion(outputs, targets)
 
